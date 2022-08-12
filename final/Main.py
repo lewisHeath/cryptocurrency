@@ -29,6 +29,9 @@ app = Flask(__name__)
 mempool = Mempool()
 blockchain = Blockchain(mempool=mempool)
 
+# global variables
+can_mine = False
+
 # Mining a new block
 # @app.route('/mine_block', methods = ['GET'])
 # def mine_block():
@@ -121,19 +124,24 @@ def replace_chain():
     return jsonify(response), 200
 
 # Running the app
-# @click.command()
-# @click.option('--port', prompt='Port', help='Port to listen on')
-def run(port_number):
-    print(f'Listening on port {port_number}')
-    app.run(host = '0.0.0.0', port = port_number)
+@click.command()
+@click.option('--port', prompt='Port', help='Port to listen on')
+def run(port):
+    print(f'Listening on port {port}')
+    global can_mine
+    can_mine = True
+    app.run(host = '0.0.0.0', port = port)
 
 def mine_blocks():
+    
     while True:
-        block = blockchain.create_block()
-        print(block.__str__())
+        if can_mine:
+            block = blockchain.create_block()
+            print(block.__str__())
 
 # Using 2 threads, one mining and one listening for requests
 if __name__ == '__main__':
-    t1 = Thread(target=mine_blocks)
+    t1 = Thread(target=run)
     t1.start()
-    run(5000)
+    # run()
+    mine_blocks()
