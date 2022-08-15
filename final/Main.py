@@ -134,6 +134,21 @@ def connect_node():
     }
     return jsonify(response), 201
 
+# deleting a node from the list of nodes
+@app.route('/delete_node', methods = ['POST'])
+def delete_node():
+    json = request.get_json()
+    node = json.get('node')
+    if node is None:
+        return "No node", 400
+    print(f'Deleting node {node}')
+    blockchain.delete_node(node)
+    response = {
+        'message': 'Deleted the node from the list of nodes.'
+    }
+    return jsonify(response), 201
+
+
 # Replacing the chain by the longest chain if needed
 @app.route('/replace_chain', methods = ['GET'])
 def replace_chain():
@@ -191,23 +206,25 @@ def mine_blocks():
                 requests.post(url, json = {'chain': blockchain.chain_to_json()})
             print(block.__str__())
 
+# handle the CTRL + C event
 def handler(signal_received, frame):
-    # Handle any cleanup here
-    # print('Received signal: {}'.format(signal_received))
     # send post request to delete this node from the list of nodes
-    # print(f'Deleting node localhost:{global_port}')
     response = requests.delete(f'http://178.79.155.227/nodes/localhost:{global_port}')
+    # tell all the nodes to delete this node from their list of nodes
+    for node in blockchain.nodes:
+        url = f'http://{node}/delete_node'
+        requests.post(url, json = {'node': f'localhost:{global_port}'})
     print(response.json())
     print('Exiting gracefully')
     exit(0)
 
 # Using 2 threads, one mining and one listening for requests
 if __name__ == '__main__':
-
+    # CTRL C event
     signal(SIGINT, handler)
-
+    # start the web server
     t1 = Thread(target=run)
     t1.daemon = True
     t1.start()
-    # run()
+    # start the mining thread (main thread)
     mine_blocks()
