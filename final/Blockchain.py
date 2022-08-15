@@ -115,6 +115,9 @@ class Blockchain:
         for node in self.nodes:
             print(node)
 
+    def delete_node(self, node_address):
+        self.nodes.discard(node_address)
+
     def connect_to_other_nodes(self):
         for node in self.nodes:
             requests.post(f'http://{node}/connect_node', json={'node': f'http://localhost:{self.port}'})
