@@ -3,6 +3,8 @@
 import hashlib
 import time
 
+from Transaction import Transaction
+
 
 class Block:
 
@@ -32,3 +34,12 @@ class Block:
             'nonce': self.nonce,
             'hash': self.hash
         }
+    
+    def from_json(self, json_data):
+        self.index = json_data['index']
+        self.timestamp = json_data['timestamp']
+        self.data = [Transaction.from_json(transaction) for transaction in json_data['data']]
+        self.previous_hash = json_data['previous_hash']
+        self.nonce = json_data['nonce']
+        self.hash = json_data['hash']
+        return self

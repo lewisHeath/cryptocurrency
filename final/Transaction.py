@@ -16,3 +16,9 @@ class Transaction:
             'receiver': self.receiver,
             'amount': self.amount
         }
+    
+    def from_json(self, json_data):
+        self.sender = json_data['sender']
+        self.receiver = json_data['receiver']
+        self.amount = json_data['amount']
+        return self
