@@ -16,6 +16,8 @@ class Blockchain:
     
     # constructor for the class
     def __init__(self, mempool):
+        self.port = None
+        self.node_address = None
         self.chain = []
         self.mempool = mempool
         self.nodes = set()
@@ -89,12 +91,12 @@ class Blockchain:
             print(f'Transaction #{transaction.__str__()} has been removed from the mempool')
             self.mempool.remove_transaction(transaction)
         
-
     # getting the last block on the chain
     def get_previous_block(self):
         return self.chain[-1]
 
-    def is_chain_valid(self, chain):
+    @staticmethod
+    def is_chain_valid(chain):
         # print(chain)
         previous_block = chain[0]
         block_index = 1
@@ -112,8 +114,8 @@ class Blockchain:
         parsed_url = urlparse(address)
         print(parsed_url)
         self.nodes.add(parsed_url.netloc)
-        for node in self.nodes:
-            print(node)
+        # for node in self.nodes:
+        #     print(node)
 
     def delete_node(self, node_address):
         self.nodes.discard(node_address)
@@ -128,10 +130,8 @@ class Blockchain:
         self.chain.append(block)
 
     def receive_chain(self, chain):
-
         length = len(chain['chain'])
-
-        print(f'Received a chain of length {length} ---------------')
+        # print(f'Received a chain of length {length} ---------------')
         if length > len(self.chain):
             # convert from json to a list of blocks
             # print(chain)
@@ -173,7 +173,6 @@ class Blockchain:
     #     return False
 
     def chain_to_json(self):
-
         chain = []
         for block in self.chain:
             chain.append(block.to_json())

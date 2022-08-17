@@ -34,6 +34,7 @@ blockchain = Blockchain(mempool=mempool)
 can_mine = False
 global_port = 0
 
+
 # Mining a new block
 # @app.route('/mine_block', methods = ['GET'])
 # def mine_block():
@@ -52,13 +53,14 @@ global_port = 0
 #     return jsonify(response), 200
 
 # Getting the full Blockchain
-@app.route('/get_chain', methods = ['GET'])
+@app.route('/get_chain', methods=['GET'])
 def get_chain():
     response = blockchain.chain_to_json()
     return response, 200
 
+
 # Checking if the blockchain is valid
-@app.route('/is_valid', methods = ['GET'])
+@app.route('/is_valid', methods=['GET'])
 def is_valid():
     is_valid = blockchain.is_chain_valid(blockchain.chain)
     if is_valid:
@@ -71,8 +73,9 @@ def is_valid():
         }
     return jsonify(response), 200
 
+
 # adding a new transaction to the blockchain
-@app.route('/add_transaction', methods = ['POST'])
+@app.route('/add_transaction', methods=['POST'])
 def add_transaction():
     print(mempool.transactions)
     json = request.get_json()
@@ -95,11 +98,12 @@ def add_transaction():
     # relay the transaction to all the nodes
     for node in blockchain.nodes:
         url = f'{node}/add_transaction'
-        requests.post(url, json = json)
+        requests.post(url, json=json)
 
     return response, 201
 
-@app.route('/receive_transaction', methods = ['POST'])
+
+@app.route('/receive_transaction', methods=['POST'])
 def receive_transaction():
     json = request.get_json()
     transaction_keys = ['sender', 'receiver', 'amount']
@@ -119,8 +123,9 @@ def receive_transaction():
     }
     return response, 201
 
+
 # Decentralizing the Blockchain
-@app.route('/connect_node', methods = ['POST'])
+@app.route('/connect_node', methods=['POST'])
 def connect_node():
     json = request.get_json()
     node = json.get('node')
@@ -134,8 +139,9 @@ def connect_node():
     }
     return jsonify(response), 201
 
+
 # deleting a node from the list of nodes
-@app.route('/delete_node', methods = ['POST'])
+@app.route('/delete_node', methods=['POST'])
 def delete_node():
     json = request.get_json()
     node = json.get('node')
@@ -150,7 +156,7 @@ def delete_node():
 
 
 # Replacing the chain by the longest chain if needed
-@app.route('/replace_chain', methods = ['GET'])
+@app.route('/replace_chain', methods=['GET'])
 def replace_chain():
     is_chain_replaced = blockchain.replace_chain()
     if is_chain_replaced:
@@ -165,14 +171,12 @@ def replace_chain():
         }
     return jsonify(response), 200
 
-@app.route('/receive_chain', methods = ['POST'])
+
+@app.route('/receive_chain', methods=['POST'])
 def receive_chain():
     print('RECEIVING CHAIN')
     json = request.get_json()
     chain = json.get('chain')
-    print(chain['chain'])
-    # print type of chain
-    print(type(chain))
     if chain is None:
         return "No chain", 400
     valid = blockchain.receive_chain(chain)
@@ -180,6 +184,21 @@ def receive_chain():
         return "Chain is valid", 200
     else:
         return "Chain is not valid", 200
+
+
+@app.route('/receive_mempool', methods=['POST'])
+def receive_mempool():
+    print('RECEIVING MEMPOOL')
+    json = request.get_json()
+    transactions = json.get('transactions')
+    # print(chain['chain'])
+    # print type of chain
+    # print(type(chain))
+    if transactions is None:
+        return "No transactions", 400
+    mempool.from_json(transactions)
+    return "Transactions received", 200
+
 
 # Running the app
 @click.command()
@@ -193,7 +212,8 @@ def run(port):
     blockchain.connect_to_other_nodes()
     global can_mine
     can_mine = True
-    app.run(host = '0.0.0.0', port = port)
+    app.run(host='0.0.0.0', port=port)
+
 
 def mine_blocks():
     while True:
@@ -203,8 +223,14 @@ def mine_blocks():
             for node in blockchain.nodes:
                 url = f'http://{node}/receive_chain'
                 # print(url)
-                requests.post(url, json = {'chain': blockchain.chain_to_json()})
+                requests.post(url, json={'chain': blockchain.chain_to_json()})
+            # broadcast the new mempool to all the nodes
+            for node in blockchain.nodes:
+                url = f'http://{node}/receive_mempool'
+                # print(url)
+                requests.post(url, json={'transactions': mempool.get_transactions()})
             print(block.__str__())
+
 
 # handle the CTRL + C event
 def handler(signal_received, frame):
@@ -213,10 +239,11 @@ def handler(signal_received, frame):
     # tell all the nodes to delete this node from their list of nodes
     for node in blockchain.nodes:
         url = f'http://{node}/delete_node'
-        requests.post(url, json = {'node': f'localhost:{global_port}'})
+        requests.post(url, json={'node': f'localhost:{global_port}'})
     print(response.json())
     print('Exiting gracefully')
     exit(0)
+
 
 # Using 2 threads, one mining and one listening for requests
 if __name__ == '__main__':
