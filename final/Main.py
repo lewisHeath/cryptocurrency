@@ -52,6 +52,16 @@ global_port = 0
 #     }
 #     return jsonify(response), 200
 
+# Default route
+@app.route('/', methods=['GET'])
+def default():
+    response = {
+        'message': 'Welcome to the blockchain API!',
+        'nodes': list(blockchain.nodes)
+    }
+    return jsonify(response), 200
+
+
 # Getting the full Blockchain
 @app.route('/get_chain', methods=['GET'])
 def get_chain():
@@ -240,8 +250,9 @@ def handler(signal_received, frame):
     for node in blockchain.nodes:
         url = f'http://{node}/delete_node'
         requests.post(url, json={'node': f'localhost:{global_port}'})
-    print(response.json())
-    print('Exiting gracefully')
+    if response.status_code == 200:
+        print('Node deleted')
+    print('Exiting gracefully...')
     exit(0)
 
 
@@ -255,3 +266,7 @@ if __name__ == '__main__':
     t1.start()
     # start the mining thread (main thread)
     mine_blocks()
+
+
+
+

@@ -58,29 +58,30 @@ class Blockchain:
         nonce_value = 0
         # keep trying to make a block until you get a valid one
         while True:
-            # check the chain has not been replaced
-            previous_block_check = self.get_previous_block()
-            if previous_block != previous_block_check:
-                nonce_value = 0
-            # get the previous block's hash
-            previous_hash = previous_block_check.hash
-            # get transactions from the mempool class, max 10 transactions
-            transactions = self.mempool.transactions[:10]
-            # create a block with the transactions
-            block = Block(index = len(self.chain), data = transactions, previous_hash = previous_hash, nonce = nonce_value)
-            # print(block.hash, end='\r')
-            # if the block is valid, add it to the chain
-            if self.check_hash(block):
-                self.chain.append(block)
-                print(f'\nBlock #{block.index} has been added to the chain')
-                # print(transactions)
-                # remove the transactions from the mempool class
-                # if the transactions list is not empty, remove the transactions from the mempool class
-                if transactions:
-                    self.remove_transactions(transactions)
-                return block
-            # otherwise, increment the nonce value and try again
-            nonce_value += 1
+            while len(self.mempool.transactions) > 0:
+                # check the chain has not been replaced
+                previous_block_check = self.get_previous_block()
+                if previous_block != previous_block_check:
+                    nonce_value = 0
+                # get the previous block's hash
+                previous_hash = previous_block_check.hash
+                # get transactions from the mempool class, max 10 transactions
+                transactions = self.mempool.transactions[:10]
+                # create a block with the transactions
+                block = Block(index = len(self.chain), data = transactions, previous_hash = previous_hash, nonce = nonce_value)
+                # print(block.hash, end='\r')
+                # if the block is valid, add it to the chain
+                if self.check_hash(block):
+                    self.chain.append(block)
+                    print(f'\nBlock #{block.index} has been added to the chain')
+                    # print(transactions)
+                    # remove the transactions from the mempool class
+                    # if the transactions list is not empty, remove the transactions from the mempool class
+                    if transactions:
+                        self.remove_transactions(transactions)
+                    return block
+                # otherwise, increment the nonce value and try again
+                nonce_value += 1
 
     def check_hash(self, block):
         block_hash = block.hash
