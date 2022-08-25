@@ -1,31 +1,37 @@
 # a class that represents a blockchain
 
-import datetime
-import hashlib
-from hmac import trans_36
-import json
 import requests
-from uuid import uuid4
 from urllib.parse import urlparse
 
 from Mempool import Mempool
 from Block import Block
+from Transaction import Transaction
+from Wallet import Wallet
 
 
 class Blockchain:
-    
+
     # constructor for the class
     def __init__(self, mempool):
         self.port = None
+        self.ip = None
         self.node_address = None
         self.chain = []
         self.mempool = mempool
         self.nodes = set()
-        self.mining_difficulty = 5
+        self.mining_difficulty = 4
+        self.wallet = Wallet()
         self.genesis_block()
+        self.generate_keys_for_self()
 
-    def add_initial_nodes(self, node_address):
-        self.node_address = f'http://{node_address}'
+    def generate_keys_for_self(self):
+        self.wallet.generate_keys()
+        # print the keys to the screen
+        print(f'Public key: {self.wallet.public_key}')
+        print(f'Private key: {self.wallet.private_key}')
+
+    def add_initial_nodes(self):
+        self.node_address = f'http://{self.ip}:{self.port}'
         nodes = requests.get('http://178.79.155.227/nodes')
         nodes = nodes.json()
         for node in nodes:
@@ -34,7 +40,7 @@ class Blockchain:
                 print('Adding node:', node)
                 self.add_node(node)
 
-        requests.post('http://178.79.155.227/nodes', json={'node': f'localhost:{self.port}'})
+        requests.post('http://178.79.155.227/nodes', json={'node': f'{self.ip}:{self.port}'})
         # self.sync_chain()
 
     def sync_chain(self):
@@ -58,30 +64,45 @@ class Blockchain:
         nonce_value = 0
         # keep trying to make a block until you get a valid one
         while True:
-            while len(self.mempool.transactions) > 0:
-                # check the chain has not been replaced
-                previous_block_check = self.get_previous_block()
-                if previous_block != previous_block_check:
-                    nonce_value = 0
-                # get the previous block's hash
-                previous_hash = previous_block_check.hash
-                # get transactions from the mempool class, max 10 transactions
-                transactions = self.mempool.transactions[:10]
-                # create a block with the transactions
-                block = Block(index = len(self.chain), data = transactions, previous_hash = previous_hash, nonce = nonce_value)
-                # print(block.hash, end='\r')
-                # if the block is valid, add it to the chain
-                if self.check_hash(block):
-                    self.chain.append(block)
-                    print(f'\nBlock #{block.index} has been added to the chain')
-                    # print(transactions)
-                    # remove the transactions from the mempool class
-                    # if the transactions list is not empty, remove the transactions from the mempool class
-                    if transactions:
-                        self.remove_transactions(transactions)
-                    return block
-                # otherwise, increment the nonce value and try again
-                nonce_value += 1
+            # print(f'Trying nonce value {nonce_value}')
+            # check the chain has not been replaced
+            previous_block_check = self.get_previous_block()
+            if previous_block != previous_block_check:
+                nonce_value = 0
+            # get the previous block's hash
+            previous_hash = previous_block_check.hash
+            # get transactions from the mempool class, max 10 transactions
+            transactions = self.mempool.transactions[:10]
+            # make transaction from nothing to the miners address
+            from_address = '0'
+            to_address = self.wallet.public_key.to_string().hex()
+            amount = 10
+            transaction_json = {
+                'from_address': from_address,
+                'to_address': to_address,
+                'amount': amount
+            }
+            signature = self.wallet.sign_transaction(transaction_json, self.wallet.private_key.to_string().hex())
+
+            miner_transaction = Transaction('0', to_address, amount, signature)
+            # add the miner transaction to the list of transactions at the start
+            transactions.insert(0, miner_transaction)
+            # create a block with the transactions
+            block = Block(index=len(self.chain), data=transactions, previous_hash=previous_hash, nonce=nonce_value)
+            # print(f'Block checking: {block.__str__()}')
+            # print(block.hash, end='\r')
+            # if the block is valid, add it to the chain
+            if self.check_hash(block):
+                self.chain.append(block)
+                print(f'\nBlock #{block.index} has been added to the chain')
+                # print(transactions)
+                # remove the transactions from the mempool class
+                # if the transactions list is not empty, remove the transactions from the mempool class
+                if transactions:
+                    self.remove_transactions(transactions)
+                return block
+            # otherwise, increment the nonce value and try again
+            nonce_value += 1
 
     def check_hash(self, block):
         block_hash = block.hash
@@ -89,9 +110,11 @@ class Blockchain:
 
     def remove_transactions(self, transactions):
         for transaction in transactions:
-            print(f'Transaction #{transaction.__str__()} has been removed from the mempool')
-            self.mempool.remove_transaction(transaction)
-        
+            # ignore the first transaction, which is the miner transaction
+            if transaction != transactions[0]:
+                print(f'Transaction #{transaction.__str__()} has been removed from the mempool')
+                self.mempool.remove_transaction(transaction)
+
     # getting the last block on the chain
     def get_previous_block(self):
         return self.chain[-1]
@@ -123,7 +146,7 @@ class Blockchain:
 
     def connect_to_other_nodes(self):
         for node in self.nodes:
-            requests.post(f'http://{node}/connect_node', json={'node': f'http://localhost:{self.port}'})
+            requests.post(f'http://{node}/connect_node', json={'node': f'http://{self.ip}:{self.port}'})
 
     def add_block(self, block):
         # turn the block out of a json object
@@ -184,3 +207,12 @@ class Blockchain:
         }
         return chain_json
 
+    def get_wallet_balance(self, address):
+        balance = 0
+        for block in self.chain:
+            for transaction in block.data:
+                if transaction.sender == address:
+                    balance -= transaction.amount
+                if transaction.receiver == address:
+                    balance += transaction.amount
+        return balance

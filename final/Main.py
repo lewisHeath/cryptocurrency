@@ -1,27 +1,16 @@
-# To be installed:
-# Flask==0.12.2: pip install Flask==0.12.2
-# Postman HTTP Client: https://www.getpostman.com/
-# requests==2.18.4: pip install requests==2.18.4
-
-
 # Importing the libraries
-import datetime
-import hashlib
-import json
 from threading import Thread
-import time
 from flask import Flask, jsonify, request
 import requests
-from uuid import uuid4
-from urllib.parse import urlparse
 import click
-from signal import SIGTERM, signal, SIGINT
+from signal import signal, SIGINT
 from sys import exit
 
 # Importing the Blockchain class
 from Blockchain import Blockchain
 from Mempool import Mempool
 from Transaction import Transaction
+from Wallet import Wallet
 
 # Creating a web app
 app = Flask(__name__)
@@ -33,24 +22,8 @@ blockchain = Blockchain(mempool=mempool)
 # global variables
 can_mine = False
 global_port = 0
+global_ip = ''
 
-
-# Mining a new block
-# @app.route('/mine_block', methods = ['GET'])
-# def mine_block():
-#     previous_block = blockchain.get_previous_block()
-#     previous_proof = previous_block['proof']
-#     proof = blockchain.proof_of_work(previous_proof)
-#     previous_hash = blockchain.hash(previous_block)
-#     block = blockchain.create_block(proof, previous_hash)
-#     response = {
-#         'message': 'Congratulations, you just mined a block!',
-#         'index': block['index'],
-#         'timestamp': block['timestamp'],
-#         'proof': block['proof'],
-#         'previous_hash': block['previous_hash']
-#     }
-#     return jsonify(response), 200
 
 # Default route
 @app.route('/', methods=['GET'])
@@ -87,15 +60,28 @@ def is_valid():
 # adding a new transaction to the blockchain
 @app.route('/add_transaction', methods=['POST'])
 def add_transaction():
-    print(mempool.transactions)
     json = request.get_json()
+    transaction_json = json.get('transaction')
     transaction_keys = ['sender', 'receiver', 'amount']
-    if not all(key in json for key in transaction_keys):
+    if not all(key in transaction_json for key in transaction_keys):
         return 'Some elements of the transaction are missing', 400
+
+    # if there is not a signature property in json
+    if 'signature' not in json:
+        return 'No signature in the transaction', 400
+    signature = json['signature']
+    # if the signature is not valid
+    if Wallet.verify_signature(transaction_json, signature) is False:
+        return 'Invalid signature', 400
+
+    # CHECK IF THE FROM ADDRESS HAS ENOUGH BALANCE - TODO
+    wallet_balance = blockchain.get_wallet_balance(transaction_json['sender']) + mempool.get_wallet_balance(transaction_json['sender'])
+    if wallet_balance < transaction_json['amount']:
+        return 'Insufficient balance', 400
 
     # create a new transaction
     index = len(blockchain.chain)
-    transaction = Transaction(json['sender'], json['receiver'], json['amount'])
+    transaction = Transaction(json['sender'], json['receiver'], json['amount'], signature)
     # add the transaction to the mempool class
     mempool.add_transaction(transaction)
     transactions_in_mempool = mempool.get_transactions()
@@ -107,7 +93,7 @@ def add_transaction():
 
     # relay the transaction to all the nodes
     for node in blockchain.nodes:
-        url = f'{node}/add_transaction'
+        url = f'{node}/receive_transaction'
         requests.post(url, json=json)
 
     return response, 201
@@ -116,13 +102,27 @@ def add_transaction():
 @app.route('/receive_transaction', methods=['POST'])
 def receive_transaction():
     json = request.get_json()
+    transaction_json = json.get('transaction')
     transaction_keys = ['sender', 'receiver', 'amount']
-    if not all(key in json for key in transaction_keys):
+    if not all(key in transaction_json for key in transaction_keys):
         return 'Some elements of the transaction are missing', 400
+
+    # if there is not a signature property in json
+    if 'signature' not in json:
+        return 'No signature in the transaction', 400
+    signature = json['signature']
+    # if the signature is not valid
+    if Wallet.verify_signature(transaction_json, signature) is False:
+        return 'Invalid signature', 400
+
+    # CHECK IF THE FROM ADDRESS HAS ENOUGH BALANCE - TODO
+    wallet_balance = blockchain.get_wallet_balance(transaction_json['sender']) + mempool.get_wallet_balance(transaction_json['sender'])
+    if wallet_balance < transaction_json['amount']:
+        return 'Insufficient balance', 400
 
     # create a new transaction
     index = len(blockchain.chain)
-    transaction = Transaction(json['sender'], json['receiver'], json['amount'])
+    transaction = Transaction(json['sender'], json['receiver'], json['amount'], signature)
     # add the transaction to the mempool class
     mempool.add_transaction(transaction)
     transactions_in_mempool = mempool.get_transactions()
@@ -201,24 +201,38 @@ def receive_mempool():
     print('RECEIVING MEMPOOL')
     json = request.get_json()
     transactions = json.get('transactions')
-    # print(chain['chain'])
-    # print type of chain
-    # print(type(chain))
     if transactions is None:
         return "No transactions", 400
     mempool.from_json(transactions)
     return "Transactions received", 200
 
 
+# generating wallet public keys and private keys
+@app.route('/generate_wallet', methods=['GET'])
+def generate_wallet():
+    wallet = Wallet()
+    wallet.generate_keys()
+    keys = wallet.get_keys()
+    response = {
+        'public_key': keys['public_key'],
+        'private_key': keys['private_key']
+    }
+    return jsonify(response), 200
+
+
 # Running the app
 @click.command()
 @click.option('--port', prompt='Port', help='Port to listen on')
-def run(port):
-    print(f'Listening on port {port}')
+@click.option('--ip', default='localhost', help='Public IP address')
+def run(port, ip):
+    print(f'Listening on port {port} and IP {ip}')
     global global_port
     global_port = port
     blockchain.port = port
-    blockchain.add_initial_nodes(f'localhost:{port}')
+    global global_ip
+    global_ip = ip
+    blockchain.ip = ip
+    blockchain.add_initial_nodes()
     blockchain.connect_to_other_nodes()
     global can_mine
     can_mine = True
@@ -245,11 +259,11 @@ def mine_blocks():
 # handle the CTRL + C event
 def handler(signal_received, frame):
     # send post request to delete this node from the list of nodes
-    response = requests.delete(f'http://178.79.155.227/nodes/localhost:{global_port}')
+    response = requests.delete(f'http://178.79.155.227/nodes/{global_ip}:{global_port}')
     # tell all the nodes to delete this node from their list of nodes
     for node in blockchain.nodes:
         url = f'http://{node}/delete_node'
-        requests.post(url, json={'node': f'localhost:{global_port}'})
+        requests.post(url, json={'node': f'{global_ip}:{global_port}'})
     if response.status_code == 200:
         print('Node deleted')
     print('Exiting gracefully...')

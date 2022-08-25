@@ -22,3 +22,10 @@ class Mempool:
     def from_json(self, json):
         self.transactions = [Transaction.from_json(transaction) for transaction in json]
         return self.transactions
+
+    def get_wallet_balance(self, address):
+        balance = 0
+        for transaction in self.transactions:
+            if transaction.sender == address:
+                balance -= transaction.amount
+        return balance
