@@ -62,6 +62,17 @@ class Blockchain:
         previous_block = self.get_previous_block()
         # set the nonce to 0
         nonce_value = 0
+        # make transaction from nothing to the miners address
+        from_address = '0'
+        to_address = self.wallet.public_key.to_string().hex()
+        amount = 10
+        transaction_json = {
+            'from_address': from_address,
+            'to_address': to_address,
+            'amount': amount
+        }
+        signature = self.wallet.sign_transaction(transaction_json, self.wallet.private_key.to_string().hex())
+        miner_transaction = Transaction('0', to_address, amount, signature)
         # keep trying to make a block until you get a valid one
         while True:
             # print(f'Trying nonce value {nonce_value}')
@@ -73,18 +84,6 @@ class Blockchain:
             previous_hash = previous_block_check.hash
             # get transactions from the mempool class, max 10 transactions
             transactions = self.mempool.transactions[:10]
-            # make transaction from nothing to the miners address
-            from_address = '0'
-            to_address = self.wallet.public_key.to_string().hex()
-            amount = 10
-            transaction_json = {
-                'from_address': from_address,
-                'to_address': to_address,
-                'amount': amount
-            }
-            signature = self.wallet.sign_transaction(transaction_json, self.wallet.private_key.to_string().hex())
-
-            miner_transaction = Transaction('0', to_address, amount, signature)
             # add the miner transaction to the list of transactions at the start
             transactions.insert(0, miner_transaction)
             # create a block with the transactions
@@ -106,7 +105,17 @@ class Blockchain:
 
     def check_hash(self, block):
         block_hash = block.hash
-        return block_hash[:self.mining_difficulty] == '0' * self.mining_difficulty
+        # convert the hex string to a decimal number
+        block_hash_decimal = int(block_hash, 16)
+        length = len(self.nodes)
+        if length == 0:
+            length = 1
+        # difficulty is 0x00000000FFFF0000000000000000000000000000000000000000000000000000 - the length of the nodes set
+        target = 431359120963401528570827832720920613319592670405401259172972399165440 / length
+        # check if the decimal number is less than the target
+        if block_hash_decimal < target:
+            return True
+        return False
 
     def remove_transactions(self, transactions):
         for transaction in transactions:
