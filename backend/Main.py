@@ -1,6 +1,7 @@
 # Importing the libraries
 from threading import Thread
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS, cross_origin
 import requests
 import click
 from signal import signal, SIGINT
@@ -13,7 +14,9 @@ from Transaction import Transaction
 from Wallet import Wallet
 
 # Creating a web app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend/build/static')
+CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 # Creating a Blockchain
 mempool = Mempool()
@@ -28,11 +31,13 @@ global_ip = ''
 # Default route
 @app.route('/', methods=['GET'])
 def default():
-    response = {
-        'message': 'Welcome to the blockchain API!',
-        'nodes': list(blockchain.nodes)
-    }
-    return jsonify(response), 200
+    # response = {
+    #     'message': 'Welcome to the blockchain API!',
+    #     'nodes': list(blockchain.nodes)
+    # }
+    # return jsonify(response), 200
+    # serve a react app inside ../frontend/build
+    return send_from_directory('../frontend/build', 'index.html')
 
 
 # Getting the full Blockchain
@@ -209,6 +214,7 @@ def receive_mempool():
 
 # generating wallet public keys and private keys
 @app.route('/generate_wallet', methods=['GET'])
+@cross_origin()
 def generate_wallet():
     wallet = Wallet()
     wallet.generate_keys()

@@ -111,7 +111,7 @@ class Blockchain:
         if length == 0:
             length = 1
         # difficulty is 0x00000000FFFF0000000000000000000000000000000000000000000000000000 - the length of the nodes set
-        target = 431359120963401528570827832720920613319592670405401259172972399165440 / length
+        target = 4744950587707503895717550246644061521101535778011892856149550039040000 / length
         # check if the decimal number is less than the target
         if block_hash_decimal < target:
             return True
