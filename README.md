@@ -15,7 +15,7 @@ conda activate blockchain
 Method 2 - Run using executable file  
 <a href="https://github.com/lewisHeath/cryptocurrency/crypto" download>Download</a>
 ## Usage
-Make sure you are in the cryptocurrency directory and run
+If you used method 1. Make sure you are in the cryptocurrency directory and run
 ```bash
 python3 Main.py
 python3 Main.py --port xxxx --ip xxx.xxx.xxx.xxx
