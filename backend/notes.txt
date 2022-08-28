@@ -1,7 +1,0 @@
-1. I need to learn threading more, I have to cancel the thread hosting the server to make the blockchain run!! - DONE
-2. Relay when nodes leave the network - DONE
-3. Share mempool states - DONE
-    3.1 Only mine blocks when I have the transactions - DONE
-4. Make wallets and private key signing and stuff - DONE
-5. The mining difficulty should be a function of the number of blocks in the chain
-6. Make a blockchain explorer
