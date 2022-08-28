@@ -27,8 +27,8 @@ class Blockchain:
     def generate_keys_for_self(self):
         self.wallet.generate_keys()
         # print the keys to the screen
-        print(f'Public key: {self.wallet.public_key}')
-        print(f'Private key: {self.wallet.private_key}')
+        print(f'Public key: {self.wallet.public_key.to_string().hex()}')
+        print(f'Private key: {self.wallet.private_key.to_string().hex()}')
 
     def add_initial_nodes(self):
         self.node_address = f'http://{self.ip}:{self.port}'
@@ -155,7 +155,11 @@ class Blockchain:
 
     def connect_to_other_nodes(self):
         for node in self.nodes:
-            requests.post(f'http://{node}/connect_node', json={'node': f'http://{self.ip}:{self.port}'})
+            try:
+                requests.post(f'http://{node}/connect_node', json={'node': f'http://{self.ip}:{self.port}'})
+            except requests.exceptions.ConnectionError:
+                print(f'Node {node} is not online')
+                continue
 
     def add_block(self, block):
         # turn the block out of a json object

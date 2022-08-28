@@ -99,7 +99,10 @@ def add_transaction():
     # relay the transaction to all the nodes
     for node in blockchain.nodes:
         url = f'{node}/receive_transaction'
-        requests.post(url, json=json)
+        try:
+            requests.post(url, json=json)
+        except requests.exceptions.ConnectionError:
+            continue
 
     return response, 201
 
@@ -229,7 +232,7 @@ def generate_wallet():
 # Running the app
 @click.command()
 @click.option('--port', prompt='Port', help='Port to listen on')
-@click.option('--ip', default='localhost', help='Public IP address')
+@click.option('--ip', prompt='Public IP', help='Public IP address')
 def run(port, ip):
     print(f'Listening on port {port} and IP {ip}')
     global global_port
@@ -258,7 +261,10 @@ def mine_blocks():
             for node in blockchain.nodes:
                 url = f'http://{node}/receive_mempool'
                 # print(url)
-                requests.post(url, json={'transactions': mempool.get_transactions()})
+                try:
+                    requests.post(url, json={'transactions': mempool.get_transactions()})
+                except requests.exceptions.ConnectionError:
+                    continue
             print(block.__str__())
 
 
@@ -269,7 +275,10 @@ def handler(signal_received, frame):
     # tell all the nodes to delete this node from their list of nodes
     for node in blockchain.nodes:
         url = f'http://{node}/delete_node'
-        requests.post(url, json={'node': f'{global_ip}:{global_port}'})
+        try:
+            requests.post(url, json={'node': f'{global_ip}:{global_port}'})
+        except requests.exceptions.ConnectionError:
+            continue
     if response.status_code == 200:
         print('Node deleted')
     print('Exiting gracefully...')
