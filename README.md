@@ -13,7 +13,7 @@ conda-env create -n blockchain -f= blockchain.yml
 conda activate blockchain
 ```
 Method 2 - Run using executable file  
-<a href="https://github.com/lewisHeath/cryptocurrency/crypto" download>Download</a>
+<a href="https://github.com/lewisHeath/cryptocurrency/cryptocurrency" download>Download</a>
 ## Usage
 If you used method 1. Make sure you are in the cryptocurrency directory and run
 ```bash
