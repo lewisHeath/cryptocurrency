@@ -20,13 +20,14 @@ class Transaction:
             'amount': self.amount,
             'signature': self.signature
         }
-    
-    def from_json(self, json_data):
-        self.sender = json_data['sender']
-        self.receiver = json_data['receiver']
-        self.amount = json_data['amount']
-        self.signature = json_data['signature']
-        return self
+
+    @staticmethod
+    def from_json(json_data):
+        sender = json_data['sender']
+        receiver = json_data['receiver']
+        amount = json_data['amount']
+        signature = json_data['signature']
+        return Transaction(sender, receiver, amount, signature)
 
     def verify_signature(self, public_key):
         # decrypt the signature with the public key

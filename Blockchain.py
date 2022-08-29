@@ -176,9 +176,8 @@ class Blockchain:
             chain = chain['chain']
             for block in chain:
                 # print(f'checking block ----- {block}')
-                new_block = Block(0, [], '0', 0)
-                actual_block = Block.from_json(new_block, block)
-                new_chain.append(actual_block)
+                new_block = Block.from_json(block)
+                new_chain.append(new_block)
             # check if the chain is valid
             if self.is_chain_valid(new_chain):
                 # print('The chain is valid')

@@ -34,12 +34,16 @@ class Block:
             'nonce': self.nonce,
             'hash': self.hash
         }
-    
-    def from_json(self, json_data):
-        self.index = json_data['index']
-        self.timestamp = json_data['timestamp']
-        self.data = [Transaction.from_json(transaction) for transaction in json_data['data']]
-        self.previous_hash = json_data['previous_hash']
-        self.nonce = json_data['nonce']
-        self.hash = json_data['hash']
-        return self
+
+    @staticmethod
+    def from_json(json_data):
+        index = json_data['index']
+        timestamp = json_data['timestamp']
+        data = [Transaction.from_json(json_data=transaction) for transaction in json_data['data']]
+        previous_hash = json_data['previous_hash']
+        nonce = json_data['nonce']
+        hash = json_data['hash']
+        block = Block(index, data, previous_hash, nonce)
+        block.hash = hash
+        block.timestamp = timestamp
+        return block
